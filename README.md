@@ -1,4 +1,4 @@
-# Word Embedding Visualization Interface
+# Word Embedding Visualization Inspector
 
 [Documentation](http://bit.ly/wevi-help)
 
