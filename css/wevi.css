@@ -1,0 +1,36 @@
+/*.no-padding {
+  padding: 0;
+}
+*/
+/*
+Responsive textarea
+*/
+textarea {
+   width: 100%;
+}
+
+/*
+Responsive SVG
+*/
+.svg-container {
+    display: inline-block;
+    position: relative;
+    width: 100%;
+    vertical-align: top;
+    overflow: hidden;
+}
+.svg-container.neural-net {
+    padding-bottom: 60%; /* aspect ratio */
+}
+.svg-container.heatmap {
+    padding-bottom: 70%; /* aspect ratio */
+}
+.svg-container.scatterplot {
+    padding-bottom: 70%; /* aspect ratio */
+}
+.svg-content-responsive {
+    display: inline-block;
+    position: absolute;
+    top: 10px;
+    left: 0;
+}
