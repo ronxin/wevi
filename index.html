@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html lang="en">
+	<head>
+		<meta charset="utf-8">
+		<title>wevi</title>
+		<link href="css/bootstrap.min.css" rel="stylesheet">
+		<link href="css/wevi.css" rel="stylesheet"> <!-- higher precedence -->
+	</head>
+	<body>
+
+	<div class="container no-padding">
+		<h1>wevi: word embedding visual inspector</h1>
+		<p><a href="http://bit.ly/wevi-help">Everything you need to know about this tool</a></p>
+	  <div hidden class="alert alert-danger" id="error"></div>
+	  <div class="row">
+	    <div class="col-sm-4 no-padding">
+		    <div class="panel panel-default">
+				  <div class="panel-heading">Control Panel</div>
+				  <div class="panel-body">
+				    <div>
+				    	<p>Config:</p>
+				    	<textarea rows="4" id="config-text"></textarea>
+				    </div>
+				    <div>
+				    	<p>Training data (context|target):</p>
+				    	<textarea rows="4" id="input-text"></textarea>
+				    </div>
+				    <div>
+				    	<p>Presets: <select id="sel-presets"></select></p>
+				    	<button class="btn btn-primary" id="btn-restart">Update and Restart</button>
+				    	<button class="btn btn-primary" id="btn-learning-rate">Update Learning Rate</button>
+				    </div>
+				    <hr>
+				    <div>
+				    	<div class="btn-group">
+							  <button class="btn btn-success" id="btn-next">Next</button>
+					    	<button class="btn btn-success" id="btn-next20">20</button>
+					    	<button class="btn btn-success" id="btn-next100">100</button>
+					    	<button class="btn btn-success" id="btn-next500">500</button>
+					    	<button class="btn btn-success" id="btn-pca">PCA</button>
+							</div>
+				    </div>
+				  </div>
+				</div>
+	    </div> <!-- end of top left-panel -->
+	    <div class="col-sm-8 no-padding">
+		    <div class="panel panel-default">
+				  <div class="panel-heading">Neurons</div>
+				  <div class="panel-body">
+				  	<div id="neuron-vis"></div>
+				  </div>
+				</div>
+	    </div>  <!-- end of top right-panel -->
+	  </div>  <!-- end of top row-->
+
+		<div class="row">
+		  <div class="col-sm-6 no-padding">
+				<div class="panel panel-default">
+				  <div class="panel-heading">Weight Matrices</div>
+				  <div class="panel-body">
+				  	<div id="heatmap-vis"></div>
+				  </div>
+				</div>
+		  </div>  <!-- end of lower left panel-->
+		  <div class="col-sm-6 no-padding">
+				<div class="panel panel-default">
+				  <div class="panel-heading">Vectors</div>
+				  <div class="panel-body">
+				    <div id="scatterplot-vis"></div>
+				  </div>
+				</div>
+		  </div>  <!-- end of lower-right panel-->
+	  </div>  <!-- end of bottom row -->
+	</div>  <!-- end of container -->
+
+	<script src="js/jquery-2.1.3.min.js"></script>
+	<script src="js/bootstrap.min.js"></script>
+	<script src="js/d3.v3.min.js"></script>
+	<script src="js/assert.js"></script>
+	<script src="js/PCA.js"></script>
+	<script src="js/vector_math.js"></script>
+	<script src="js/toyw2v.js"></script>
+	</body>
+</html>
