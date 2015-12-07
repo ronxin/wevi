@@ -101,7 +101,7 @@ function load_training_data() {
     tokens[0].forEach(function(t) {vocab.push(t)});
     tokens[1].forEach(function(t) {vocab.push(t)});
   });
-  vocab = $.unique(vocab).sort();
+  vocab = $.unique(vocab.sort());
 }
 
 // "context word" === "input word"
