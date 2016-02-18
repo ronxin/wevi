@@ -58,9 +58,13 @@ function feedforward(inputVectors, outputVectors, inputNeurons, hiddenNeurons, o
     }
     outputNeurons[i]['net_input'] = tmpSum;
     expNetInput = exponential(tmpSum);
+    if (expNetInput == Infinity) expNetInput = Number.MAX_VALUE;
     sumExpNetInput += expNetInput;
     outValueTemp.push(expNetInput);
   }
+  
+  if (sumExpNetInput == Infinity) sumExpNetInput = Number.MAX_VALUE;
+  
   for (var i = 0; i < vocabSize; i++) {  // softmax
     outputNeurons[i]['value'] = outValueTemp[i] / sumExpNetInput;
   }
