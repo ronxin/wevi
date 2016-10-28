@@ -21,9 +21,12 @@ function init() {
   update_neural_net_svg();
   setup_heatmap_svg();
   update_heatmap_svg();
-  update_pca();
-  setup_scatterplot_svg();
-  update_scatterplot_svg();
+  //update_pca();
+  //setup_scatterplot_svg();
+  //update_scatterplot_svg();
+  create_huffman();
+  JSONtree = tree_to_JSON(hufftree.root);
+  setup_tree_svg();
 
   // initial feed-forward
   do_feed_forward();
@@ -35,6 +38,7 @@ function set_default_config() {
     hidden_size: 5,
     random_state: 1,
     learning_rate: 0.2,
+    use_hs: 1,
   };
   $('#config-text').html(JSON.stringify(default_config_obj, null, ''));
 }
@@ -87,6 +91,7 @@ function set_default_training_data() {
 
 function load_training_data() {
   input_pairs = [];  // global
+  non_unique_vocab = []; //global
   vocab = [];  // global
   current_input = null;  // global, when inactivate, should be null
   current_input_idx = -1;
@@ -100,9 +105,241 @@ function load_training_data() {
     input_pairs.push(tokens);
     tokens[0].forEach(function(t) {vocab.push(t)});
     tokens[1].forEach(function(t) {vocab.push(t)});
+    tokens[0].forEach(function(t) {non_unique_vocab.push(t)});
+    tokens[1].forEach(function(t) {non_unique_vocab.push(t)});
   });
+  non_unique_vocab.sort();
   vocab = $.unique(vocab.sort());
 }
+
+// BINARY TREE SECTION //
+function Node(val) {
+  this.value = val;
+  this.gradient = [];
+  this.recent_gradient = [];
+  this.parent = null;
+  this.left = null;
+  this.right = null;
+  this.vect = [];
+  this.index = 0;
+}
+
+function HuffmanTree() {
+  this.root = null;
+  this.data = [];
+}
+
+function create_huffman() {
+  //create frequency table
+  huff_words = [];
+  huff_counts = [];
+  var prev;
+
+  for (var i = 0; i < non_unique_vocab.length; i++) {
+    if (non_unique_vocab[i] !== prev) {
+      huff_words.push(non_unique_vocab[i]);
+      huff_counts.push(1);
+    } else {
+      huff_counts[huff_counts.length - 1]++;
+    }
+    prev = non_unique_vocab[i];
+  }
+
+  //create huffman tree
+  hufftree = new HuffmanTree();
+  huff = huff_words.map(function(e, i) {
+    return [e, huff_counts[i]];
+  });
+  
+  while(huff.length > 1) {
+    huff.sort(function(x,y) {return x[1] - y[1]});
+
+    var temp1 = huff[0];
+    var temp2 = huff[1];
+    huff.shift();
+    huff.shift();
+
+    if (temp1[0].indexOf('treetemp') !== -1) { //if temp1 IS NOT an actual leaf
+      var pos1 = parseInt(temp1[0].replace(/[^0-9\.]/g, ''), 10);
+      var tempnode1 = hufftree.data[pos1];
+
+      if (temp2[0].indexOf('treetemp') == -1) { //if temp2 IS an actual leaf
+        var tempnode2 = new Node(temp2[0]);
+        var tempparent = new Node('treetemp' + hufftree.data.length);
+
+        tempparent.left = tempnode1;
+        tempparent.right = tempnode2;
+        tempnode1.parent = tempparent;
+        tempnode2.parent = tempparent;
+
+        hufftree.data[pos1] = tempnode1;
+        hufftree.data.push(tempnode2);
+        hufftree.data.push(tempparent);
+      } else { //if temp2 IS NOT an actual leaf
+        var pos2 = parseInt(temp2[0].replace(/[^0-9\.]/g, ''), 10);
+        var tempnode2 = hufftree.data[pos2];
+        var tempparent = new Node('treetemp' + hufftree.data.length);
+
+        tempparent.left = tempnode1;
+        tempparent.right = tempnode2;
+        tempnode1.parent = tempparent;
+        tempnode2.parent = tempparent;
+
+        hufftree.data[pos1] = tempnode1;
+        hufftree.data[pos2] = tempnode2;
+        hufftree.data.push(tempparent);
+      }
+    } else { //if temp1 IS an actual leaf
+      var tempnode1 = new Node(temp1[0]);
+
+      if (temp2[0].indexOf('treetemp') == -1) { //if temp2 IS an actual leaf
+        var tempnode2 = new Node(temp2[0]);
+        var tempparent = new Node('treetemp' + hufftree.data.length);
+
+        tempparent.left = tempnode1;
+        tempparent.right = tempnode2;
+        tempnode1.parent = tempparent;
+        tempnode2.parent = tempparent;
+
+        hufftree.data.push(tempnode1);
+        hufftree.data.push(tempnode2);
+        hufftree.data.push(tempparent);
+      } else { //if temp2 IS NOT an actual leaf
+        var pos2 = parseInt(temp2[0].replace(/[^0-9\.]/g, ''), 10);
+        var tempnode2 = hufftree.data[pos2];
+        var tempparent = new Node('treetemp' + hufftree.data.length);
+
+        tempparent.left = tempnode1;
+        tempparent.right = tempnode2;
+        tempnode1.parent = tempparent;
+        tempnode2.parent = tempparent;
+
+        hufftree.data.push(tempnode1);
+        hufftree.data[pos2] = tempnode2;
+        hufftree.data.push(tempparent);
+      }
+    }
+
+    huff.unshift(['treetemp' + (hufftree.data.length - 1), temp1[1] + temp2[1]]); //replace with NON-LEAF node
+  }
+  
+  hufftree.root = hufftree.data[hufftree.data.length - 1];
+
+  hufftree.data.forEach(function(n, i) {
+    for (var j = 0; j < hiddenSize; j++) {
+      n.vect.push(get_random_init_weight(hiddenSize));
+      n.gradient.push(0.0);
+      n.recent_gradient.push(0.0);
+    }
+
+    n.index = i;
+
+    outputNodes.push(n);
+  });
+}
+
+function tree_to_JSON(w) { //MAKE SURE to call on hufftree.root
+  var json_in_progress = "";
+
+  if (w.value.indexOf("treetemp") == -1) {
+    json_in_progress += ("{\n\t \"name\": \"" + w.value + "\",\n");  
+  } else {
+    json_in_progress += ("{\n\t \"name\": \"\", \n");
+  }
+  json_in_progress += ("\t \"parent\": \"null\"");
+  
+  if ((w.left == null) && (w.right == null) && (w == w.parent.left)) {
+    json_in_progress += "\n},\n";
+    return json_in_progress;
+  } else if ((w.left == null) && (w.right == null)) {
+    json_in_progress += "\n}\n";
+    //json_in_progress += "]\n"
+    return json_in_progress;
+  }
+
+  json_in_progress += (",\n\t \"children\": [\n" + tree_to_JSON(w.left) + tree_to_JSON(w.right) + "]\n}");
+  if (w.parent != null && w == w.parent.left) {json_in_progress += ",\n"}
+  return json_in_progress;
+}
+
+function setup_tree_svg() {
+
+var margin = {top: 20, right: 0, bottom: 0, left: -20},
+width = 523,
+height = 565;
+  
+var i = 0;
+
+var tree = d3.layout.tree()
+  .size([height, width]);
+
+var diagonal = d3.svg.diagonal()
+  .projection(function(d) { return [d.x, d.y]; });
+
+d3.select('div#tree-vis > *').remove();
+tree_svg = d3.select('div#tree-vis')
+  .append("div")
+  .classed("svg-container", true)
+  .classed("tree", true)
+  .append("svg")
+  .attr("preserveAspectRatio", "xMinYMin meet")
+  .attr("viewBox", "0 0 " + width + " " + height)
+  .classed("svg-content-responsive", true)
+  .classed("tree-vis", true)
+  //.attr("width", width)
+  //.attr("height", height)
+  .append("g")
+  .attr("transform", "translate(" + margin.left + "," + margin.top + ")");
+
+treeData = [JSON.parse(JSONtree)];
+root = treeData[0];
+  
+update(root);
+
+function update(source) {
+
+  // Compute the new tree layout
+  var nodes = tree.nodes(root).reverse(),
+    links = tree.links(nodes);
+
+  // Normalize for fixed-depth
+  nodes.forEach(function(d) { d.y = d.depth * 100; });
+
+  // Declare the nodes
+  node = tree_svg.selectAll("g.node")
+    .data(nodes, function(d) { return d.id || (d.id = ++i); });
+
+  // Enter the nodes
+  nodeEnter = node.enter().append("g")
+    .attr("id", function(d) {return "node" + d.name;})
+    .attr("class", "node")
+    .attr("transform", function(d) { 
+      return "translate(" + d.x + "," + d.y + ")"; });
+
+  nodeEnter.append("circle")
+    .attr("r", 10)
+    .style("fill", "#fff");
+
+  nodeEnter.append("text")
+    .attr("y", function(d) { 
+      return d.children || d._children ? -18 : 18; })
+    .attr("dy", ".35em")
+    .attr("text-anchor", "middle")
+    .text(function(d) { return d.name; })
+    .style("fill-opacity", 1);
+
+  // Declare the links
+  link = tree_svg.selectAll("path.link")
+    .data(links, function(d) { return d.target.id; });
+
+  // Enter the links
+  link.enter().insert("path", "g")
+    .attr("class", "link")
+    .attr("d", diagonal);
+  }
+}
+
+// END OF BINARY TREE SECTION //
 
 // "context word" === "input word"
 function isCurrentContextWord(w) {
@@ -188,6 +425,7 @@ function setup_neural_net() {
   outputEdges = [];
   inputVectors = [];  // keeps references to the same set of underlying objects as inputEdges
   outputVectors = [];
+  outputNodes = []; // keeps references to hufftree.data, essentially
   seed_random(config_obj.random_state);  // vector_math.js
   for (var i = 0; i < vocabSize; i++) {
     var inVecTmp = [];
@@ -203,6 +441,10 @@ function setup_neural_net() {
     inputVectors.push(inVecTmp);
     outputVectors.push(outVecTmp);
   }
+
+  // USE HIERARCHICAL SOFTMAX OR NOT
+  use_hs = 0;
+  if(config_obj.use_hs) {use_hs = 1;}
 }
 
 function setup_neural_net_svg() {
@@ -336,7 +578,7 @@ function update_neural_net_svg() {
     .attr("stroke", function (d) {return getInputEdgeStrokeColor(d)})
     .attr("stroke-width", function (d) {return getInputEdgeStrokeWidth(d)});
 
-
+  /*
   nn_svg.selectAll("g.output-edge")
     .data(outputEdges)
     .enter()
@@ -350,6 +592,7 @@ function update_neural_net_svg() {
     .attr("y2", function (d) {return ioNeuronCYMin + ioNeuronCYInt * d['target']})
     .attr("stroke", function (d) {return getOutputEdgeStrokeColor(d)})
     .attr("stroke-width", function (d) {return getOutputEdgeStrokeWidth(d)});
+  */
 
   // This function needs to be here, because it needs to "see" ioNeuronCYMin and such...
   draw_input_output_arrows = function() {
@@ -366,6 +609,7 @@ function update_neural_net_svg() {
           .style("stroke-width", "10");
       }
     });
+    /*
     outputNeurons.forEach(function(n, neuronIdx) {
       if (isCurrentTargetWord(n.word)) {
         nn_svg.append("line")
@@ -379,6 +623,7 @@ function update_neural_net_svg() {
           .style("stroke-width", "10");
       }
     });
+    */
   };
 
   // Set up hover behavior
@@ -440,13 +685,17 @@ function erase_input_output_arrows() {
 // Helper function
 // Actual method implemented in vector_math.js
 function do_feed_forward() {
-  feedforward(inputVectors, outputVectors, inputNeurons, hiddenNeurons, outputNeurons);
+  if(use_hs) {
+    feedforward_with_HS(inputVectors, outputVectors, inputNeurons, hiddenNeurons, outputNeurons, outputNodes);
+  } else {
+    feedforward(inputVectors, outputVectors, inputNeurons, hiddenNeurons, outputNeurons);
+  }
 }
 
 // Helper function
 // Actual method implemented in vector_math.js
 function do_backpropagate() {
-  var expectedOutput = [];
+  expectedOutput = [];
   outputNeurons.forEach(function(n) {
     if (isCurrentTargetWord(n.word)) {
       expectedOutput.push(1);
@@ -454,13 +703,22 @@ function do_backpropagate() {
       expectedOutput.push(0);
     }
   });
-  backpropagate(inputVectors, outputVectors, inputNeurons, hiddenNeurons, outputNeurons, expectedOutput);
+
+  if (use_hs) {
+    backpropagate_with_HS(inputVectors, outputVectors, inputNeurons, hiddenNeurons, outputNeurons, expectedOutput, outputNodes);
+  } else {
+    backpropagate(inputVectors, outputVectors, inputNeurons, hiddenNeurons, outputNeurons, expectedOutput);  
+  }
 }
 
 // Helper function
 // Actual method implemented in vector_math.js
 function do_apply_gradients() {
-  apply_gradient(inputVectors, outputVectors, getCurrentLearningRate());
+  if (use_hs) {
+    apply_gradient_with_HS(inputVectors, outputVectors, outputNodes, getCurrentLearningRate());
+  } else {
+    apply_gradient(inputVectors, outputVectors, getCurrentLearningRate());  
+  }
 }
 
 function getCurrentLearningRate() {
@@ -488,7 +746,20 @@ function mouseHoverInputNeuron(d) {
     else n['value'] = 0;
   });
   do_feed_forward();
-  update_neural_excite_value(); 
+  update_neural_excite_value();
+
+  // also highlight input/output vectors in heatmap
+  hmap_svg
+    .selectAll("g.hmap-cell")
+    .selectAll('#heatin' + d.idx)
+    .classed("hoverclass", true);
+  hmap_svg
+    .selectAll("g.hmap-cell")
+    .selectAll('#heatout' + d.idx)
+    .classed("hoverclass", true);
+  d3.selectAll('#hmap' + d.word).attr('opacity', .5);
+
+  highlight_path(d.word);
 }
 
 function mouseOutInputNeuron(d) {
@@ -498,7 +769,19 @@ function mouseOutInputNeuron(d) {
     n['value'] = 0;
   });
   do_feed_forward();
-  update_neural_excite_value(); 
+  update_neural_excite_value();
+ 
+  hmap_svg
+    .selectAll("g.hmap-cell")
+    .selectAll('#heatin' + d.idx)
+    .classed("hoverclass", false);
+  hmap_svg
+    .selectAll("g.hmap-cell")
+    .selectAll('#heatout' + d.idx)
+    .classed("hoverclass", false);
+  d3.selectAll('#hmap' + d.word).attr('opacity', 1);
+
+  unhighlight_path(d.word);
 }
 
 function mouseClickInputNeuron(d) {
@@ -554,7 +837,8 @@ function update_heatmap_svg() {
     .attr("x", function (d) {return inputCellBaseX + cellWidth * d['target']})
     .attr("y", function (d) {return ioCellBaseY + cellHeight * d['source']})
     .attr("width", cellFillWidth)
-    .attr("height", cellFillHeight);
+    .attr("height", cellFillHeight)
+    .attr("id", function (d) {return 'heatin' + d['source']});
 
   var outputWeightElems = hmap_svg
     .selectAll("g.hmap-output-cell")
@@ -567,7 +851,8 @@ function update_heatmap_svg() {
     .attr("x", function (d) {return outputCellBaseX + cellWidth * d['source']})
     .attr("y", function (d) {return ioCellBaseY + cellHeight * d['target']})
     .attr("width", cellFillWidth)
-    .attr("height", cellFillHeight);
+    .attr("height", cellFillHeight)
+    .attr("id", function(d) {return 'heatout' + d['target']});
 
   hmap_svg
     .selectAll("g.hmap-cell > rect")
@@ -584,6 +869,7 @@ function update_heatmap_svg() {
     .attr("y", function (d, i) {return ioCellBaseY + cellHeight * i + 0.5 * cellHeight})
     .attr("text-anchor", "end")
     .attr("alignment-baseline", "middle")
+    .attr("id", function(d) {return 'hmap' + d.word})
     .style("font-size", 30);
 
   var heatmap_labels = [
@@ -765,7 +1051,7 @@ function nextButtonClick() {
     erase_input_output_arrows();
     do_apply_gradients();  // subtract gradients from weights
     update_heatmap_svg();
-    update_scatterplot_svg();
+    //update_scatterplot_svg();
   } else {
     activateNextInput();
     draw_input_output_arrows();
@@ -789,7 +1075,7 @@ function batchTrain(numIter) {
     erase_input_output_arrows();
     do_apply_gradients();
     update_heatmap_svg();
-    update_scatterplot_svg();
+    //update_scatterplot_svg();
     if (numIter == 1) return;
     else setTimeout(function() {
       batchTrain(numIter - 1)
@@ -830,4 +1116,111 @@ function addColorPalette() {
     .attr("width", 17)
     .attr("height", 100)
     .style("fill", function(d) {return exciteValueToColor(d)});
+}
+
+
+// NEW FUNCTIONS for determining difference between HS and Original
+
+function euclidean_distance(vec1, vec2) {
+  assert(vec1.length == vec2.length);
+
+  var tempsum = 0;
+
+  for(var i = 0; i < vec1.length; i++) {
+    tempsum += Math.pow((vec1[i] - vec2[i]), 2);
+  }
+
+  return Math.sqrt(tempsum);
+}
+
+function distance(vec1, vec2) {
+  assert(vec1.length == vec2.length);
+
+  var tempsum = 0;
+
+  for(var i = 0; i < vec1.length; i++) {
+    tempsum += (vec1[i] - vec2[i]);
+  }
+
+  return tempsum / vec1.length;
+}
+
+function get_prob_vector(word, hs_option, seed) {
+  // first, train model
+  var modified_config_obj = {
+    hidden_size: 5,
+    random_state: seed,
+    learning_rate: 0.2,
+    use_hs: hs_option,
+  };
+  $('#config-text').html(JSON.stringify(modified_config_obj, null, ''));
+
+  init();
+  var training_sessions = 500;
+
+  for (var i = 0; i < training_sessions; i++) {
+    activateNextInput();
+    do_backpropagate();
+    deactivateCurrentInput();
+    do_apply_gradients();
+  }
+  
+  // Excite given neuron (for simplicity, ignore always-excited)
+  var sourceindex = vocab.indexOf(word);
+
+  inputNeurons.forEach(function(n,i) {
+    if (('always_excited' in n) && n['always_excited']) {
+      return;
+    }
+    if (i == sourceindex) n['value'] = 1;
+    else n['value'] = 0;
+  });
+  do_feed_forward();
+  update_neural_excite_value();
+
+  // collect probabilities
+  prob_vector = [];
+
+  outputNeurons.forEach(function(n, i) {
+    prob_vector.push(n['value']);
+  });
+
+  // Inhibit all neurons, except always-excited ones
+  inputNeurons.forEach(function(n,i) {
+    if (('always_excited' in n) && n['always_excited']) return;
+    n['value'] = 0;
+  });
+  do_feed_forward();
+  update_neural_excite_value();
+
+  return prob_vector;
+}
+
+function get_prob_vector_distance_single(word, seed) {
+  // HS training
+  pvec1 = get_prob_vector(word, 1, seed);
+  // Non-HS training
+  pvec2 = get_prob_vector(word, 0, seed);
+  
+  return distance(pvec1, pvec2);
+}
+
+function get_prob_vector_distance_array(vocab, seed) {
+  var tempsum = 0;
+
+  vocab.forEach(function(n) {
+    tempsum += get_prob_vector_distance_single(n, seed);
+  });
+
+  return tempsum / vocab.length;
+}
+
+function get_distance_distribution(vocab, iters) {
+  distances = [];
+
+  for (var i = 0; i < iters; i++) {
+    distances.push(get_prob_vector_distance_array(vocab, (i + 1)));
+  }
+
+  return distances;
 }

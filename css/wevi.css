@@ -28,9 +28,39 @@ Responsive SVG
 .svg-container.scatterplot {
     padding-bottom: 70%; /* aspect ratio */
 }
+.svg-container.tree {
+    padding-bottom: 90%; /* aspect ratio */
+}
 .svg-content-responsive {
     display: inline-block;
     position: absolute;
     top: 10px;
     left: 0;
+}
+
+.hoverclass {
+    opacity: .5;
+}
+
+
+/*
+For Tree
+*/
+
+.node circle {
+    fill: #fff;
+    stroke: steelblue;
+    stroke-width: 3px;
+}
+
+.nodeinuse {
+    fill: steelblue;
+}
+
+.node text { font: 12px sans-serif; }
+
+.link {
+  fill: none;
+  stroke: #ccc;
+  stroke-width: 2px;
 }
