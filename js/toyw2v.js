@@ -17,16 +17,21 @@ function init() {
   load_training_data();  // this needs to be loaded first to determine vocab
   load_config();
   setup_neural_net();
-  setup_neural_net_svg();
-  update_neural_net_svg();
-  setup_heatmap_svg();
-  update_heatmap_svg();
+  //setup_neural_net_svg();
+  //update_neural_net_svg();
+  //setup_heatmap_svg();
+  //update_heatmap_svg();
   //update_pca();
   //setup_scatterplot_svg();
   //update_scatterplot_svg();
   create_huffman();
   JSONtree = tree_to_JSON(hufftree.root);
-  setup_tree_svg();
+  //setup_tree_svg();
+  setup_neural_net_svg();
+  update_neural_net_svg();
+  setup_heatmap_svg();
+  update_heatmap_svg();
+  //draw_tree_interface();
 
   // initial feed-forward
   do_feed_forward();
@@ -263,21 +268,20 @@ function tree_to_JSON(w) { //MAKE SURE to call on hufftree.root
 }
 
 function setup_tree_svg() {
-
-var margin = {top: 20, right: 0, bottom: 0, left: -20},
-width = 523,
-height = 565;
+  var margin = {top: 20, right: 0, bottom: 0, left: -20},
+  width = 523,
+  height = 565;
   
-var i = 0;
+  var i = 0;
 
-var tree = d3.layout.tree()
-  .size([height, width]);
+  var tree = d3.layout.cluster()
+    .size([height, width]);
 
-var diagonal = d3.svg.diagonal()
-  .projection(function(d) { return [d.x, d.y]; });
+  var diagonal = d3.svg.diagonal()
+    .projection(function(d) { return [d.x, d.y]; });
 
-d3.select('div#tree-vis > *').remove();
-tree_svg = d3.select('div#tree-vis')
+  d3.select('div#tree-vis > *').remove();
+  tree_svg = d3.select('div#tree-vis')
   .append("div")
   .classed("svg-container", true)
   .classed("tree", true)
@@ -291,12 +295,12 @@ tree_svg = d3.select('div#tree-vis')
   .append("g")
   .attr("transform", "translate(" + margin.left + "," + margin.top + ")");
 
-treeData = [JSON.parse(JSONtree)];
-root = treeData[0];
+  treeData = [JSON.parse(JSONtree)];
+  root = treeData[0];
   
-update(root);
+  update(root);
 
-function update(source) {
+  function update(source) {
 
   // Compute the new tree layout
   var nodes = tree.nodes(root).reverse(),
@@ -489,7 +493,7 @@ function update_neural_net_svg() {
   var colors = ["#427DA8", "#6998BB", "#91B3CD", "#BAD0E0", 
                 "#E1ECF3", "#FADEE0", "#F2B5BA", "#EA8B92", 
                 "#E2636C", "#DB3B47"];
-  numToColor = d3.scale.linear()
+  numToColor = d3.scaleLinear()
     .domain(d3.range(0, 1, 1 / (colors.length - 1)))
     .range(colors);  // global
 
@@ -502,6 +506,8 @@ function update_neural_net_svg() {
   var hiddenNeuronCYInt = (nn_svg_height - 2 * hiddenNeuronCYMin) / (hiddenSize - 1 + 1e-6);
   var neuronRadius = nn_svg_width * 0.015;
   var neuronLabelOffset = neuronRadius * 1.4;
+
+  draw_tree_interface();
 
   var inputNeuronElems = nn_svg
     .selectAll("g.input-neuron")
@@ -523,6 +529,19 @@ function update_neural_net_svg() {
     .attr("y", function (d, i) {return ioNeuronCYMin + ioNeuronCYInt * i})
     .attr("text-anchor", "end");
 
+  d3.selectAll(".node--leaf")
+    .classed("output-neuron", true)
+    .classed("neuron", true);
+
+  outputNeuronElems = d3.selectAll(".node--leaf")
+    .datum(function(d) { return {word: d3.select(this).attr("word")}; });
+
+  outputNeuronElems.data(outputNeurons, function(d) {return d['word'];});
+
+  outputNeuronElems
+    .append("circle");
+
+  /* ARCHIVED FOR TREE PURPOSE
   var outputNeuronElems = nn_svg
     .selectAll("g.output-neuron")
     .data(outputNeurons)
@@ -542,6 +561,8 @@ function update_neural_net_svg() {
     .attr("x", outputNeuronCX + neuronLabelOffset)
     .attr("y", function (d, i) {return ioNeuronCYMin + ioNeuronCYInt * i})
     .attr("text-anchor", "start");
+  */ 
+  
 
   nn_svg.selectAll("g.hidden-neuron")
     .data(hiddenNeurons)
@@ -553,7 +574,7 @@ function update_neural_net_svg() {
     .attr("cx", hiddenNeuronCX)
     .attr("cy", function (d, i) {return hiddenNeuronCYMin + hiddenNeuronCYInt * i;});
 
-  nn_svg.selectAll("g.neuron > circle")
+  d3.selectAll("g.neuron > circle")
     .attr("r", neuronRadius)
     .attr("stroke-width", "2")
     .attr("stroke", "grey")
@@ -578,7 +599,7 @@ function update_neural_net_svg() {
     .attr("stroke", function (d) {return getInputEdgeStrokeColor(d)})
     .attr("stroke-width", function (d) {return getInputEdgeStrokeWidth(d)});
 
-  /*
+  /* ARCHIVED FOR TREE PURPOSE
   nn_svg.selectAll("g.output-edge")
     .data(outputEdges)
     .enter()
@@ -609,7 +630,8 @@ function update_neural_net_svg() {
           .style("stroke-width", "10");
       }
     });
-    /*
+
+    /* ARCHIVED FOR TREE PURPOSE
     outputNeurons.forEach(function(n, neuronIdx) {
       if (isCurrentTargetWord(n.word)) {
         nn_svg.append("line")
@@ -663,7 +685,7 @@ function isNeuronExcited(neuron) {
   Only re-color some elements, without changing the neural-network structure.
 */
 function update_neural_excite_value() {
-  nn_svg.selectAll("g.neuron > circle")
+  d3.selectAll("g.neuron > circle")
     .attr("fill", function(d) {return exciteValueToColor(d['value'])});
   nn_svg.selectAll("g.input-edge > line")
     .attr("stroke-width", function(d) {return getInputEdgeStrokeWidth(d)})
@@ -759,7 +781,7 @@ function mouseHoverInputNeuron(d) {
     .classed("hoverclass", true);
   d3.selectAll('#hmap' + d.word).attr('opacity', .5);
 
-  highlight_path(d.word);
+  //highlight_path(d.word);
 }
 
 function mouseOutInputNeuron(d) {
@@ -781,7 +803,7 @@ function mouseOutInputNeuron(d) {
     .classed("hoverclass", false);
   d3.selectAll('#hmap' + d.word).attr('opacity', 1);
 
-  unhighlight_path(d.word);
+  //unhighlight_path(d.word);
 }
 
 function mouseClickInputNeuron(d) {
@@ -1121,6 +1143,16 @@ function addColorPalette() {
 
 // NEW FUNCTIONS for determining difference between HS and Original
 
+function euclidean_norm(vec) {
+  var tempsum = 0;
+
+  for (var i = 0; i < vec.length; i++) {
+    tempsum += Math.pow(vec[i], 2);
+  }
+
+  return Math.sqrt(tempsum);
+}
+
 function euclidean_distance(vec1, vec2) {
   assert(vec1.length == vec2.length);
 
@@ -1143,6 +1175,10 @@ function distance(vec1, vec2) {
   }
 
   return tempsum / vec1.length;
+}
+
+function cosine_similarity(vec1, vec2) {
+  return (dot_product(vec1, vec2) / (euclidean_norm(vec1) * euclidean_norm(vec2)));
 }
 
 function get_prob_vector(word, hs_option, seed) {
@@ -1223,4 +1259,69 @@ function get_distance_distribution(vocab, iters) {
   }
 
   return distances;
+}
+
+// NEW FUNCTIONS for tree structure/visualization
+
+function draw_tree_interface() {
+
+tree_width = 450;
+tree_height = 750;
+
+var neuronRadius = nn_svg_width * 0.015;
+
+var svg = nn_svg.append("svg")//append("div")
+   //.classed("svg-container", true) //container class to make it responsive
+   //.append("svg")
+   .attr("x", "50%")
+   //.attr("width", "50%")
+   //.attr("height", "50%")
+   //.attr("float", "right")
+   .attr("preserveAspectRatio", "xMinYMin meet")
+   .attr("viewBox", "0 -25 " + tree_width + " " + tree_height)
+   //class to make it responsive
+   .classed("svg-content-responsive", true)
+   .classed("tree", true);  // for picking up svg from outside
+
+g = svg.append("g").attr("transform", "translate(120,0)");
+
+var tree = d3.cluster()
+    .size([tree_height - 50, tree_width - 150]);
+
+root = d3.hierarchy(JSON.parse(JSONtree));
+  //.sort(function(a, b) { return (a.height - b.height) || a.name.localeCompare(b.name); });
+
+tree(root);
+
+var link = g.selectAll(".link")
+    .data(root.descendants().slice(1))
+    .enter().append("path")
+    .attr("class", "link")
+      .attr("d", function(d) {
+        return "M" + d.y + "," + d.x
+            + "C" + (d.parent.y + 10) + "," + d.x
+            + " " + (d.parent.y + 10) + "," + d.parent.x
+            + " " + d.parent.y + "," + d.parent.x;
+      });
+
+var node = g.selectAll(".node")
+    .data(root.descendants())
+    .enter().append("g")
+    .attr("class", function(d) { return "node" + (d.children ? " node--internal" : " node--leaf"); })
+    .attr("transform", function(d) { return "translate(" + d.y + "," + d.x + ")"; })
+
+var internals = g.selectAll(".node--internal")
+    .append("circle")
+    .attr("r", neuronRadius)
+    .attr("fill", "lightgrey");
+
+node.append("text")
+    .attr("dy", 3)
+    .attr("x", function(d) { return d.children ? -8 : 25; })
+    .style("font-size", 24)
+    .style("text-anchor", function(d) { return d.children ? "end" : "start"; })
+    .text(function(d) {return d.data.name;});
+
+var leaves = g.selectAll(".node--leaf")
+    .attr("word", function(d) {return d.data.name;});
 }

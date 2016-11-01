@@ -333,7 +333,7 @@ function get_index(nodes, string) {
 function hs_prob(nodes, string) {
   var i = get_index(nodes, string);
   var cumProd = 1.0;
-  var tempProd = 1.0;
+  var tempProd = 1.0;	
 
   while(nodes[i].parent) {
     var sign = -1;

@@ -29,7 +29,7 @@ Responsive SVG
     padding-bottom: 70%; /* aspect ratio */
 }
 .svg-container.tree {
-    padding-bottom: 90%; /* aspect ratio */
+    /*padding-bottom: 125%; /* aspect ratio */
 }
 .svg-content-responsive {
     display: inline-block;
@@ -44,9 +44,10 @@ Responsive SVG
 
 
 /*
-For Tree
+For Old Tree
 */
 
+/*
 .node circle {
     fill: #fff;
     stroke: steelblue;
@@ -64,3 +65,46 @@ For Tree
   stroke: #ccc;
   stroke-width: 2px;
 }
+*/
+
+/*
+For New Tree
+*/
+
+/*
+.node circle {
+  fill: lightgrey;
+  stroke: grey;
+  stroke-width: 2;
+}
+*/
+
+.node text {
+  font: 10px sans-serif;
+}
+
+.node--internal circle {
+  fill: lightgrey;
+  stroke: grey;
+  stroke-width: 2;
+}
+
+/*
+.node--leaf circle {
+  fill: lightgrey;
+}
+*/
+
+.node--internal text {
+  text-shadow: 0 1px 0 #fff, 0 -1px 0 #fff, 1px 0 0 #fff, -1px 0 0 #fff;
+}
+
+.link {
+  fill: none;
+  stroke: #555;
+  stroke-opacity: 0.4;
+  stroke-width: 2px;
+}
+
+/* Neural net */
+
