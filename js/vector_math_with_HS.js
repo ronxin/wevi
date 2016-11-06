@@ -217,6 +217,7 @@ function backpropagate_with_HS(inputVectors, outputVectors, inputNeurons, hidden
 
   //only need to update vectors on path
   var start_word = outputNeurons[expectedOutput.indexOf(1)].word;
+
   var path_index = get_index(outputNodes, start_word);
   while(outputNodes[path_index].parent) {
     var tj = 0;
@@ -350,18 +351,4 @@ function hs_prob(nodes, string) {
   }
 
   return cumProd;
-}
-
-function highlight_path(string) {
-  var parents = [];
-
-  var tempParent = tree_svg.selectAll('#node' + string)
-    .select("circle")
-    .style("fill", "steelblue");
-}
-
-function unhighlight_path(string) {
-  tree_svg.selectAll('#node' + string)
-    .select("circle")
-    .style("fill", "#fff");
 }

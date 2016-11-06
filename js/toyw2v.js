@@ -115,6 +115,8 @@ function load_training_data() {
   });
   non_unique_vocab.sort();
   vocab = $.unique(vocab.sort());
+
+  expected_word = ""; //global
 }
 
 // BINARY TREE SECTION //
@@ -265,82 +267,6 @@ function tree_to_JSON(w) { //MAKE SURE to call on hufftree.root
   json_in_progress += (",\n\t \"children\": [\n" + tree_to_JSON(w.left) + tree_to_JSON(w.right) + "]\n}");
   if (w.parent != null && w == w.parent.left) {json_in_progress += ",\n"}
   return json_in_progress;
-}
-
-function setup_tree_svg() {
-  var margin = {top: 20, right: 0, bottom: 0, left: -20},
-  width = 523,
-  height = 565;
-  
-  var i = 0;
-
-  var tree = d3.layout.cluster()
-    .size([height, width]);
-
-  var diagonal = d3.svg.diagonal()
-    .projection(function(d) { return [d.x, d.y]; });
-
-  d3.select('div#tree-vis > *').remove();
-  tree_svg = d3.select('div#tree-vis')
-  .append("div")
-  .classed("svg-container", true)
-  .classed("tree", true)
-  .append("svg")
-  .attr("preserveAspectRatio", "xMinYMin meet")
-  .attr("viewBox", "0 0 " + width + " " + height)
-  .classed("svg-content-responsive", true)
-  .classed("tree-vis", true)
-  //.attr("width", width)
-  //.attr("height", height)
-  .append("g")
-  .attr("transform", "translate(" + margin.left + "," + margin.top + ")");
-
-  treeData = [JSON.parse(JSONtree)];
-  root = treeData[0];
-  
-  update(root);
-
-  function update(source) {
-
-  // Compute the new tree layout
-  var nodes = tree.nodes(root).reverse(),
-    links = tree.links(nodes);
-
-  // Normalize for fixed-depth
-  nodes.forEach(function(d) { d.y = d.depth * 100; });
-
-  // Declare the nodes
-  node = tree_svg.selectAll("g.node")
-    .data(nodes, function(d) { return d.id || (d.id = ++i); });
-
-  // Enter the nodes
-  nodeEnter = node.enter().append("g")
-    .attr("id", function(d) {return "node" + d.name;})
-    .attr("class", "node")
-    .attr("transform", function(d) { 
-      return "translate(" + d.x + "," + d.y + ")"; });
-
-  nodeEnter.append("circle")
-    .attr("r", 10)
-    .style("fill", "#fff");
-
-  nodeEnter.append("text")
-    .attr("y", function(d) { 
-      return d.children || d._children ? -18 : 18; })
-    .attr("dy", ".35em")
-    .attr("text-anchor", "middle")
-    .text(function(d) { return d.name; })
-    .style("fill-opacity", 1);
-
-  // Declare the links
-  link = tree_svg.selectAll("path.link")
-    .data(links, function(d) { return d.target.id; });
-
-  // Enter the links
-  link.enter().insert("path", "g")
-    .attr("class", "link")
-    .attr("d", diagonal);
-  }
 }
 
 // END OF BINARY TREE SECTION //
@@ -721,6 +647,11 @@ function do_backpropagate() {
   outputNeurons.forEach(function(n) {
     if (isCurrentTargetWord(n.word)) {
       expectedOutput.push(1);
+
+      if(expected_word != "") {unhighlight_path(expected_word);}
+      expected_word = n.word;
+      highlight_path(expected_word);
+
     } else {
       expectedOutput.push(0);
     }
@@ -1261,7 +1192,7 @@ function get_distance_distribution(vocab, iters) {
   return distances;
 }
 
-// NEW FUNCTIONS for tree structure/visualization
+// NEW FUNCTIONS for tree structure/visualization //
 
 function draw_tree_interface() {
 
@@ -1270,7 +1201,7 @@ tree_height = 750;
 
 var neuronRadius = nn_svg_width * 0.015;
 
-var svg = nn_svg.append("svg")//append("div")
+tree_svg = nn_svg.append("svg")//append("div")
    //.classed("svg-container", true) //container class to make it responsive
    //.append("svg")
    .attr("x", "50%")
@@ -1283,7 +1214,7 @@ var svg = nn_svg.append("svg")//append("div")
    .classed("svg-content-responsive", true)
    .classed("tree", true);  // for picking up svg from outside
 
-g = svg.append("g").attr("transform", "translate(120,0)");
+g = tree_svg.append("g").attr("transform", "translate(120,0)");
 
 var tree = d3.cluster()
     .size([tree_height - 50, tree_width - 150]);
@@ -1323,5 +1254,72 @@ node.append("text")
     .text(function(d) {return d.data.name;});
 
 var leaves = g.selectAll(".node--leaf")
-    .attr("word", function(d) {return d.data.name;});
+    .attr("word", function(d) {return d.data.name;})
+    .attr("class", function(d) {return d3.select(this).attr("class") + " " + d.data.name;});
+
+generate_words();
+
+}
+
+
+function set_words(node) {
+	if(node.children) {
+		node.words = [];
+	}
+}
+
+function populate_words(node) {
+	if(node.children) {
+		if(node.children[0].data.name != "") {
+			node.words.push(node.children[0].data.name);
+		}
+		if(node.children[1].data.name != "") {
+			node.words.push(node.children[1].data.name);
+		}
+
+		if(node.children[0].words){
+			node.words = node.words.concat(node.children[0].words);
+		}
+		if(node.children[1].words){
+			node.words = node.words.concat(node.children[1].words);
+		}			
+	}
+}
+
+function make_words_unique(node) {
+	if(node.words) {
+		node.words = node.words.filter((v, i, a) => a.indexOf(v) === i);
+	}
+}
+
+function populate_word_class(node) {
+	if(node.words) {
+		var path_words = node.words.join(" ");
+
+		d3.select(this).attr("class", d3.select(this).attr("class") + " " + path_words);
+	}
+}
+
+function generate_words() {
+	tree_svg.selectAll(".node").each(set_words);
+
+	for (var i = 0; i < root.height; i++) {
+		tree_svg.selectAll(".node").each(populate_words);
+	}
+
+	tree_svg.selectAll(".node").each(make_words_unique);
+
+	tree_svg.selectAll(".node").each(populate_word_class);
+}
+
+function highlight_path(string) {
+	d3.selectAll(".node--internal." + string)
+		.select("circle")
+		.style("fill", "steelblue");
+}
+
+function unhighlight_path(string) {
+	d3.selectAll(".node--internal." + string)
+		.select("circle")
+		.style("fill", "lightgrey");
 }
