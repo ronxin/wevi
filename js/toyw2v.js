@@ -330,6 +330,35 @@ function deactivateCurrentInput() {
   update_neural_excite_value();  // visual
 }
 
+
+
+// SPECIAL ACTIVATE/DEACTIVE for BATCH TRAINING AND ANIMATION
+
+function activateNextInput_modified() {
+  current_input_idx = (current_input_idx + 1) % input_pairs.length;
+  current_input = input_pairs[current_input_idx];
+  inputNeurons.forEach(function(n, i) {
+    n['value'] = isCurrentContextWord(n['word']) ? 1 : 0;
+    n['always_excited'] = isCurrentContextWord(n['word']);
+  });
+  do_feed_forward();  // model
+  //update_neural_excite_value();  // visual
+}
+
+function deactivateCurrentInput_modified() {
+  current_input = null;
+  inputNeurons.forEach(function(n, i) {
+    // n['value'] = 0;
+    n['always_excited'] = false;
+  });
+  do_feed_forward();  // model
+  //update_neural_excite_value();  // visual
+}
+
+// END OF MODIFICATIONS
+
+
+
 function show_error(e) {
   console.log(e);
   var new_error = '<p>' + e + '</p>';
@@ -613,6 +642,8 @@ function isNeuronExcited(neuron) {
 function update_neural_excite_value() {
   d3.selectAll("g.neuron > circle")
     .attr("fill", function(d) {return exciteValueToColor(d['value'])});
+  d3.selectAll(".node--internal > circle")
+  	.style("fill", function(d) {return exciteValueToColor(d['value'])});
   nn_svg.selectAll("g.input-edge > line")
     .attr("stroke-width", function(d) {return getInputEdgeStrokeWidth(d)})
     .attr("stroke", function(d) {return getInputEdgeStrokeColor(d)});
@@ -711,8 +742,6 @@ function mouseHoverInputNeuron(d) {
     .selectAll('#heatout' + d.idx)
     .classed("hoverclass", true);
   d3.selectAll('#hmap' + d.word).attr('opacity', .5);
-
-  //highlight_path(d.word);
 }
 
 function mouseOutInputNeuron(d) {
@@ -733,8 +762,6 @@ function mouseOutInputNeuron(d) {
     .selectAll('#heatout' + d.idx)
     .classed("hoverclass", false);
   d3.selectAll('#hmap' + d.word).attr('opacity', 1);
-
-  //unhighlight_path(d.word);
 }
 
 function mouseClickInputNeuron(d) {
@@ -1019,12 +1046,12 @@ function updateAndRestartButtonClick() {
 // Train in batch
 function batchTrain(numIter) {
   // Step 1:
-  activateNextInput();
+  activateNextInput_modified();
   draw_input_output_arrows();
   setTimeout(function() {
     do_backpropagate();
     // Step 2:
-    deactivateCurrentInput();
+    deactivateCurrentInput_modified();
     erase_input_output_arrows();
     do_apply_gradients();
     update_heatmap_svg();
@@ -1073,6 +1100,16 @@ function addColorPalette() {
 
 
 // NEW FUNCTIONS for determining difference between HS and Original
+
+function vector_average(vec) {
+	var tempsum = 0;
+
+	for (var i = 0; i < vec.length; i++) {
+		tempsum += vec[i];
+	}
+
+	return tempsum / vec.length;
+}
 
 function euclidean_norm(vec) {
   var tempsum = 0;
@@ -1257,6 +1294,8 @@ var leaves = g.selectAll(".node--leaf")
     .attr("word", function(d) {return d.data.name;})
     .attr("class", function(d) {return d3.select(this).attr("class") + " " + d.data.name;});
 
+d3.selectAll(".node--internal").each(init_node_vect);
+
 generate_words();
 
 }
@@ -1315,11 +1354,77 @@ function generate_words() {
 function highlight_path(string) {
 	d3.selectAll(".node--internal." + string)
 		.select("circle")
-		.style("fill", "steelblue");
+		.style("fill", "green");
 }
 
 function unhighlight_path(string) {
 	d3.selectAll(".node--internal." + string)
 		.select("circle")
 		.style("fill", "lightgrey");
+
+	update_neural_excite_value();
+}
+
+// first element in children array is LEFT child
+
+function update_internal_children(node, tree_root) {
+	tempnode = node;
+	temproot = tree_root;
+
+	node.vect = tree_root.vect;
+	node.value = vector_average(node.vect);
+
+	if(node.children) {
+		var childname0 = tempnode.children[0].data.name;
+		var childname1 = tempnode.children[1].data.name;
+
+		if(childname0 == "") {
+			update_internal_children(tempnode.children[0], temproot.left);
+		}
+		
+		if(childname1 == "") {
+			update_internal_children(tempnode.children[1], temproot.right);
+		}
+	}
+}
+
+function update_internal_helper(node) {
+	var tempnode = this.__data__;
+	var temproot = hufftree.root;
+
+	tempnode.vect = temproot.vect;
+	tempnode.value = vector_average(tempnode.vect);
+
+	if(tempnode.children) {
+		var childname0 = tempnode.children[0].data.name;
+		var childname1 = tempnode.children[1].data.name;
+
+		if(childname0 == "") {
+			update_internal_children(tempnode.children[0], temproot.left);
+		}
+		
+		if(childname1 == "") {
+			update_internal_children(tempnode.children[1], temproot.right);
+		}
+	}
+}
+
+function update_internal_nodes() {
+	d3.select(".node--internal").each(update_internal_helper);
+}
+
+function init_node_vect(node) {
+	node.vect = [];
+	node.value = 0;
+
+	for (var i = 0; i < hiddenSize; i++) {
+		node.vect[i] = 0;
+	}
+}
+
+function dummy(node) {
+	tempdata = this.__data__;
+	tempvect = tempdata.vect;
+
+	console.log(euclidean_norm(tempvect));
 }
