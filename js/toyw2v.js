@@ -1299,7 +1299,6 @@ function draw_tree_interface() {
     .attr("class", function(d) {return d3.select(this).attr("class") + " " + d.data.name;});
 
   d3.selectAll(".node--internal").each(init_node_vect);
-
   generate_words();
 }
 

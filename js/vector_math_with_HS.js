@@ -310,6 +310,8 @@ function apply_gradient_with_HS(inputVectors, outputVectors, outputNodes, learni
       outputNodes[i].gradient[j] = 0; //reset gradients after single use
     }
   }
+
+ update_internal_nodes(); 
 }
 
 function exponential(x) {
