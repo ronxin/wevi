@@ -17,6 +17,8 @@ function init() {
   load_training_data();  // this needs to be loaded first to determine vocab
   load_config();
   setup_neural_net();
+
+  /* OLD ORDER
   //setup_neural_net_svg();
   //update_neural_net_svg();
   //setup_heatmap_svg();
@@ -24,14 +26,14 @@ function init() {
   //update_pca();
   //setup_scatterplot_svg();
   //update_scatterplot_svg();
+  */
+
   create_huffman();
   JSONtree = tree_to_JSON(hufftree.root);
-  //setup_tree_svg();
   setup_neural_net_svg();
   update_neural_net_svg();
   setup_heatmap_svg();
   update_heatmap_svg();
-  //draw_tree_interface();
 
   // initial feed-forward
   do_feed_forward();
@@ -120,6 +122,7 @@ function load_training_data() {
 }
 
 // BINARY TREE SECTION //
+
 function Node(val) {
   this.value = val;
   this.gradient = [];
@@ -329,6 +332,35 @@ function deactivateCurrentInput() {
   do_feed_forward();  // model
   update_neural_excite_value();  // visual
 }
+
+
+
+// SPECIAL ACTIVATE/DEACTIVATE for BATCH TRAINING AND ANIMATION
+
+function activateNextInput_modified() {
+  current_input_idx = (current_input_idx + 1) % input_pairs.length;
+  current_input = input_pairs[current_input_idx];
+  inputNeurons.forEach(function(n, i) {
+    n['value'] = isCurrentContextWord(n['word']) ? 1 : 0;
+    n['always_excited'] = isCurrentContextWord(n['word']);
+  });
+  do_feed_forward();  // model
+  update_neural_excite_value();  // visual
+}
+
+function deactivateCurrentInput_modified() {
+  current_input = null;
+  inputNeurons.forEach(function(n, i) {
+    // n['value'] = 0;
+    n['always_excited'] = false;
+  });
+  do_feed_forward();  // model
+  update_neural_excite_value();  // visual
+}
+
+// END OF MODIFICATIONS
+
+
 
 function show_error(e) {
   console.log(e);
@@ -611,8 +643,11 @@ function isNeuronExcited(neuron) {
   Only re-color some elements, without changing the neural-network structure.
 */
 function update_neural_excite_value() {
+  update_internal_nodes();
   d3.selectAll("g.neuron > circle")
     .attr("fill", function(d) {return exciteValueToColor(d['value'])});
+  d3.selectAll(".node--internal > circle")
+  	.style("fill", function(d) {return exciteValueToColor(d['value'])});
   nn_svg.selectAll("g.input-edge > line")
     .attr("stroke-width", function(d) {return getInputEdgeStrokeWidth(d)})
     .attr("stroke", function(d) {return getInputEdgeStrokeColor(d)});
@@ -711,8 +746,6 @@ function mouseHoverInputNeuron(d) {
     .selectAll('#heatout' + d.idx)
     .classed("hoverclass", true);
   d3.selectAll('#hmap' + d.word).attr('opacity', .5);
-
-  //highlight_path(d.word);
 }
 
 function mouseOutInputNeuron(d) {
@@ -733,8 +766,6 @@ function mouseOutInputNeuron(d) {
     .selectAll('#heatout' + d.idx)
     .classed("hoverclass", false);
   d3.selectAll('#hmap' + d.word).attr('opacity', 1);
-
-  //unhighlight_path(d.word);
 }
 
 function mouseClickInputNeuron(d) {
@@ -1019,12 +1050,12 @@ function updateAndRestartButtonClick() {
 // Train in batch
 function batchTrain(numIter) {
   // Step 1:
-  activateNextInput();
+  activateNextInput_modified();
   draw_input_output_arrows();
   setTimeout(function() {
     do_backpropagate();
     // Step 2:
-    deactivateCurrentInput();
+    deactivateCurrentInput_modified();
     erase_input_output_arrows();
     do_apply_gradients();
     update_heatmap_svg();
@@ -1073,6 +1104,16 @@ function addColorPalette() {
 
 
 // NEW FUNCTIONS for determining difference between HS and Original
+
+function vector_average(vec) {
+	var tempsum = 0;
+
+	for (var i = 0; i < vec.length; i++) {
+		tempsum += vec[i];
+	}
+
+	return tempsum / vec.length;
+}
 
 function euclidean_norm(vec) {
   var tempsum = 0;
@@ -1196,12 +1237,12 @@ function get_distance_distribution(vocab, iters) {
 
 function draw_tree_interface() {
 
-tree_width = 450;
-tree_height = 750;
+  tree_width = 450;
+  tree_height = 750;
 
-var neuronRadius = nn_svg_width * 0.015;
+  var neuronRadius = nn_svg_width * 0.015;
 
-tree_svg = nn_svg.append("svg")//append("div")
+  tree_svg = nn_svg.append("svg")//append("div")
    //.classed("svg-container", true) //container class to make it responsive
    //.append("svg")
    .attr("x", "50%")
@@ -1214,17 +1255,17 @@ tree_svg = nn_svg.append("svg")//append("div")
    .classed("svg-content-responsive", true)
    .classed("tree", true);  // for picking up svg from outside
 
-g = tree_svg.append("g").attr("transform", "translate(120,0)");
+  g = tree_svg.append("g").attr("transform", "translate(120,0)");
 
-var tree = d3.cluster()
+  var tree = d3.cluster()
     .size([tree_height - 50, tree_width - 150]);
 
-root = d3.hierarchy(JSON.parse(JSONtree));
+  root = d3.hierarchy(JSON.parse(JSONtree));
   //.sort(function(a, b) { return (a.height - b.height) || a.name.localeCompare(b.name); });
 
-tree(root);
+  tree(root);
 
-var link = g.selectAll(".link")
+  var link = g.selectAll(".link")
     .data(root.descendants().slice(1))
     .enter().append("path")
     .attr("class", "link")
@@ -1235,32 +1276,32 @@ var link = g.selectAll(".link")
             + " " + d.parent.y + "," + d.parent.x;
       });
 
-var node = g.selectAll(".node")
+  var node = g.selectAll(".node")
     .data(root.descendants())
     .enter().append("g")
     .attr("class", function(d) { return "node" + (d.children ? " node--internal" : " node--leaf"); })
     .attr("transform", function(d) { return "translate(" + d.y + "," + d.x + ")"; })
 
-var internals = g.selectAll(".node--internal")
+  var internals = g.selectAll(".node--internal")
     .append("circle")
     .attr("r", neuronRadius)
     .attr("fill", "lightgrey");
 
-node.append("text")
+  node.append("text")
     .attr("dy", 3)
     .attr("x", function(d) { return d.children ? -8 : 25; })
     .style("font-size", 24)
     .style("text-anchor", function(d) { return d.children ? "end" : "start"; })
     .text(function(d) {return d.data.name;});
 
-var leaves = g.selectAll(".node--leaf")
+  var leaves = g.selectAll(".node--leaf")
     .attr("word", function(d) {return d.data.name;})
     .attr("class", function(d) {return d3.select(this).attr("class") + " " + d.data.name;});
 
-generate_words();
+  d3.selectAll(".node--internal").each(init_node_vect);
 
+  generate_words();
 }
-
 
 function set_words(node) {
 	if(node.children) {
@@ -1315,11 +1356,73 @@ function generate_words() {
 function highlight_path(string) {
 	d3.selectAll(".node--internal." + string)
 		.select("circle")
-		.style("fill", "steelblue");
+		.style("fill", "green");
 }
 
 function unhighlight_path(string) {
 	d3.selectAll(".node--internal." + string)
 		.select("circle")
 		.style("fill", "lightgrey");
+
+	update_neural_excite_value();
+}
+
+// first element in children array is LEFT child (according to d3 hierarchy)
+
+function update_internal_children(node, tree_root) {
+	var tempnode = node;
+	var temproot = tree_root;
+
+	tempnode.vect = tree_root.vect;
+	tempnode.value = dot_product(tempnode.vect, hiddenVector) / 5; //make it a little less dramatic
+
+	if(tempnode.children) {
+		var childname0 = tempnode.children[0].data.name;
+		var childname1 = tempnode.children[1].data.name;
+
+		if(childname0 == "") {
+			update_internal_children(tempnode.children[0], temproot.left);
+		}
+		
+		if(childname1 == "") {
+			update_internal_children(tempnode.children[1], temproot.right);
+		}
+	}
+}
+
+function update_internal_helper(node) {
+	var tempnode = this.__data__;
+	var temproot = hufftree.root;
+
+	tempnode.vect = temproot.vect;
+	tempnode.value = dot_product(tempnode.vect, hiddenVector) / 5; //make it a little less dramatic
+
+	if(tempnode.children) {
+		var childname0 = tempnode.children[0].data.name;
+		var childname1 = tempnode.children[1].data.name;
+
+		if(childname0 == "") {
+			update_internal_children(tempnode.children[0], temproot.left);
+		}
+		
+		if(childname1 == "") {
+			update_internal_children(tempnode.children[1], temproot.right);
+		}
+	}
+}
+
+function update_internal_nodes() {
+	d3.select(".node--internal").each(update_internal_helper);
+}
+
+function init_node_vect(node) {
+  hiddenVector = [];
+
+	node.vect = [];
+	node.value = 0;
+
+	for (var i = 0; i < hiddenSize; i++) {
+		node.vect[i] = 0;
+    hiddenVector[i] = 0;
+	}
 }
