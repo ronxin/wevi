@@ -114,9 +114,12 @@ function backpropagate(inputVectors, outputVectors, inputNeurons, hiddenNeurons,
 
   var errors = [];
   outputNeurons.forEach(function(n, j) {
+    // error is the difference between output y_j and expected value t
+    // as in the paper Eq(77)
     error_j = n['value'] - expectedOutput[j]
     errors.push(error_j);
-    n['net_input_gradient'] = error_j;
+    // net_input_gradient is the EI'_j as in the paper Eq(78)
+    n['net_input_gradient'] = error_j * n['value'] * (1.0 - n['value']);
   });
 
   hiddenNeurons.forEach(function(n) {
@@ -125,8 +128,11 @@ function backpropagate(inputVectors, outputVectors, inputNeurons, hiddenNeurons,
 
   outputVectors.forEach(function(v, j) {  // j: vocab index
     v.forEach(function(e, i) {  // i: hidden layer index
-      e['gradient'] = errors[j] * hiddenNeurons[i]['value'];
-      hiddenNeurons[i]['net_input_gradient'] += errors[j] * e['weight'];
+      // this is the gradient defined as partial E partial w'_ij Eq(79)
+      e['gradient'] = outputNeurons[j]['net_input_gradient'] * hiddenNeurons[i]['value'];
+      // partial E partial h_i Eq (82). This is also Eq(83) since
+      // h_i = u_i as defined in the feed forward function
+      hiddenNeurons[i]['net_input_gradient'] += outputNeurons[j]['net_input_gradient'] * e['weight'];
     });
   });
 
@@ -144,6 +150,7 @@ function backpropagate(inputVectors, outputVectors, inputNeurons, hiddenNeurons,
   
   for (var k = 0; k < vocabSize; k++) {
     for (var i = 0; i < hiddenSize; i++) {
+      // Eq(84). Note x_k is either 1 or 0
       if (isInputExcitedArray[k])  {
         inputVectors[k][i]['gradient'] = hiddenNeurons[i]['net_input_gradient'] / numInputExcited;
       } else {
