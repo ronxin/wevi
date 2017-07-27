@@ -94,36 +94,45 @@ function feedforward(inputVectors, outputVectors, inputNeurons, hiddenNeurons, o
 function backpropagate(inputVectors, outputVectors, inputNeurons, hiddenNeurons, outputNeurons, expectedOutput) {
   var hiddenSize = hiddenNeurons.length;
   var vocabSize = inputNeurons.length;
-  
-  /* Sanity check */
+  /*
+   Sanity check from left to right:
+   * inputNeurons
+   * inputVectors
+   * hiddenNeurons
+   * outputVectors
+   * outputNeurons
+   * expectedOutput
+  */
+  assert(vocabSize == inputNeurons.length);
   assert(vocabSize == inputVectors.length);
+  inputVectors.forEach(function(v) {assert(hiddenSize == v.length)});
+  assert(hiddenSize == hiddenNeurons.length);
   assert(vocabSize == outputVectors.length);
+  outputVectors.forEach(function(v) {assert(hiddenSize == v.length)});
   assert(vocabSize == outputNeurons.length);
   assert(vocabSize == expectedOutput.length);
-  inputVectors.forEach(function(v) {assert(hiddenSize == v.length)});
-  outputVectors.forEach(function(v) {assert(hiddenSize == v.length)});
 
   var errors = [];
-  outputNeurons.forEach(function(n, i) {
-    error_i = n['value'] - expectedOutput[i]
-    errors.push(error_i);
-    n['net_input_gradient'] = error_i;
+  outputNeurons.forEach(function(n, j) {
+    error_j = n['value'] - expectedOutput[j]
+    errors.push(error_j);
+    n['net_input_gradient'] = error_j;
   });
 
-  hiddenNeurons.forEach(function(n, j) {
+  hiddenNeurons.forEach(function(n) {
     n['net_input_gradient'] = 0.0;
   });
 
-  outputVectors.forEach(function(v, i) {  // i: vocab index (opposite to my paper's notations)
-    v.forEach(function(e, j) {  // j: hidden layer index
-      e['gradient'] = errors[i] * hiddenNeurons[j]['value'];
-      hiddenNeurons[j]['net_input_gradient'] += errors[i] * e['weight'];
+  outputVectors.forEach(function(v, j) {  // j: vocab index
+    v.forEach(function(e, i) {  // i: hidden layer index
+      e['gradient'] = errors[j] * hiddenNeurons[i]['value'];
+      hiddenNeurons[i]['net_input_gradient'] += errors[j] * e['weight'];
     });
   });
 
   var numInputExcited = 0;
   var isInputExcitedArray = [];
-  inputNeurons.forEach(function(n,i) {
+  inputNeurons.forEach(function(n) {
     if (n['value'] < 1e-5) {  // should be either 0 or 1
       isInputExcitedArray.push(false);
     } else {
@@ -133,13 +142,13 @@ function backpropagate(inputVectors, outputVectors, inputNeurons, hiddenNeurons,
   });
   assert(numInputExcited > 0, "With no input assigned, how can you backpropagate??!");
   
-  for (var i = 0; i < vocabSize; i++) {
-    for (var j = 0; j < hiddenSize; j++) {
-      if (isInputExcitedArray[i])  {
-        inputVectors[i][j]['gradient'] = hiddenNeurons[j]['net_input_gradient'] / numInputExcited;
+  for (var k = 0; k < vocabSize; k++) {
+    for (var i = 0; i < hiddenSize; i++) {
+      if (isInputExcitedArray[k])  {
+        inputVectors[k][i]['gradient'] = hiddenNeurons[i]['net_input_gradient'] / numInputExcited;
       } else {
         // this is necessary -- it will reset the gradients of non-invovled input vectors.
-        inputVectors[i][j]['gradient'] = 0;
+        inputVectors[k][i]['gradient'] = 0;
       }
     }
   }
