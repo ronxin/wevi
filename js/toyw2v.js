@@ -62,7 +62,7 @@ function set_default_training_data() {
      {name:"Self loop (5-point)", data:"A|A,B|B,C|C,D|D,E|E"},
      {name:"Directed loop (5-point)", data:"A|B,B|C,C|D,D|E,E|A"},
      {name:"Undirected loop (5-point)", data:"A|B,B|C,C|D,D|E,E|A,B|A,C|B,D|C,E|D,A|E"},
-     {name:"King and queen", data: "king|kindom,queen|kindom,king|palace,queen|palace,king|royal,queen|royal,king|George,queen|Mary,man|rice,woman|rice,man|farmer,woman|farmer,man|house,woman|house,man|George,woman|Mary"},
+     {name:"King and queen", data: "king|kingdom,queen|kingdom,king|palace,queen|palace,king|royal,queen|royal,king|George,queen|Mary,man|rice,woman|rice,man|farmer,woman|farmer,man|house,woman|house,man|George,woman|Mary"},
      {name:"King and queen (symbol)", data: "king|a,queen|a,king|b,queen|b,king|c,queen|c,king|x,queen|y,man|d,woman|d,man|e,woman|e,man|f,woman|f,man|x,woman|y"},
     ];
   
